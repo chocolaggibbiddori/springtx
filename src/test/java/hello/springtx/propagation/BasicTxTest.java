@@ -9,9 +9,12 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.UnexpectedRollbackException;
 import org.springframework.transaction.interceptor.DefaultTransactionAttribute;
 
 import javax.sql.DataSource;
+
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @Slf4j
 @SpringBootTest
@@ -90,5 +93,35 @@ public class BasicTxTest {
 
         log.info("outer transaction commit");
         txManager.commit(outer);
+    }
+
+    @Test
+    void outer_rollback() {
+        log.info("outer transaction start");
+        TransactionStatus outer = txManager.getTransaction(new DefaultTransactionAttribute());
+
+        log.info("inner transaction start");
+        TransactionStatus inner = txManager.getTransaction(new DefaultTransactionAttribute());
+
+        log.info("inner transaction commit");
+        txManager.commit(inner);
+
+        log.info("outer transaction rollback");
+        txManager.rollback(outer);
+    }
+
+    @Test
+    void inner_rollback() {
+        log.info("outer transaction start");
+        TransactionStatus outer = txManager.getTransaction(new DefaultTransactionAttribute());
+
+        log.info("inner transaction start");
+        TransactionStatus inner = txManager.getTransaction(new DefaultTransactionAttribute());
+
+        log.info("inner transaction rollback");
+        txManager.rollback(inner);
+
+        log.info("outer transaction commit");
+        assertThatThrownBy(() -> txManager.commit(outer)).isInstanceOf(UnexpectedRollbackException.class);
     }
 }
